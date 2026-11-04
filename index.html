@@ -105,7 +105,9 @@ function render() {
   q.o.forEach((t, i) => {
     const b = document.createElement('button');
     b.className = 'opt';
-    b.textContent = L[i] + '. ' + t;
+    // Outputs print left-to-right: isolate the value so RTL bidi
+    // never flips digit sequences like "8 4" into "4 8".
+    b.innerHTML = L[i] + '. ' + '<span dir="ltr">' + t + '</span>';
     b.onclick = () => answer(i, b);
     $('opts').appendChild(b);
   });
