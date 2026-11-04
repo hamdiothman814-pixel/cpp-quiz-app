@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>اختبار خرج برامج C++ — التمرير بالقيمة والمرجع والنطاق</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, 'Segoe UI', Tahoma, sans-serif; background: #F8F6F1; color: #1a1a1a; margin: 0; padding: 16px; }
+  .wrap { max-width: 680px; margin: 0 auto; }
+  h1 { text-align: center; color: #0C6B57; font-size: 22px; margin: 8px 0 4px; }
+  .sub { text-align: center; color: #666; font-size: 14px; margin-bottom: 16px; }
+  .card { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+  .progress { height: 10px; background: #e8e4dc; border-radius: 6px; overflow: hidden; margin-bottom: 6px; }
+  .bar { height: 100%; background: #0C6B57; width: 0%; transition: width .3s; }
+  .meta { display: flex; justify-content: space-between; color: #666; font-size: 13px; margin-bottom: 14px; }
+  .qtext { font-size: 18px; font-weight: 700; line-height: 1.7; margin-bottom: 12px; }
+  pre { direction: ltr; text-align: left; background: #f4f4f0; border: 1px solid #e2e0d8; border-radius: 10px; padding: 14px; font-size: 15px; line-height: 1.6; overflow-x: auto; margin: 0 0 16px; }
+  .opt { display: block; width: 100%; text-align: right; font-size: 16px; line-height: 1.6; padding: 12px 14px; margin-bottom: 10px; border: 2px solid #ddd; border-radius: 10px; background: #fff; cursor: pointer; }
+  .opt:hover:not(:disabled) { border-color: #0C6B57; }
+  .opt:disabled { cursor: default; opacity: .95; }
+  .opt.correct { border-color: #2e7d32; background: #e8f5e9; }
+  .opt.wrong { border-color: #c62828; background: #fdecea; }
+  .explain { display: none; background: #f1f6f4; border-right: 4px solid #0C6B57; padding: 12px 14px; border-radius: 8px; font-size: 15px; line-height: 1.7; margin-top: 6px; }
+  .btn { display: block; width: 100%; padding: 14px; font-size: 17px; font-weight: 700; color: #fff; background: #0C6B57; border: none; border-radius: 10px; cursor: pointer; margin-top: 14px; }
+  .btn:disabled { background: #aaa; }
+  .btn2 { background: #D97706; }
+  .score { text-align: center; font-size: 26px; font-weight: 800; color: #0C6B57; margin: 10px 0; }
+  .rev { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid #eee; }
+  .rev .qt { font-weight: 700; line-height: 1.7; }
+  .rev .ua { color: #c62828; }
+  .rev .ca { color: #2e7d32; }
+  .rev .ex { color: #555; font-size: 14px; line-height: 1.7; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>💻 اختبار خرج برامج C++</h1>
+  <p class="sub">20 سؤال أتمتة — التمرير بالقيمة، التمرير بالمرجع، النطاق العام والمحلي — توقّع الخرج ثم اعرف النتيجة فوراً</p>
+
+  <div id="quiz" class="card">
+    <div class="progress"><div id="bar" class="bar"></div></div>
+    <div class="meta"><span id="count"></span><span id="scoreLive"></span></div>
+    <div id="qtext" class="qtext"></div>
+    <div id="code"></div>
+    <div id="opts"></div>
+    <div id="explain" class="explain"></div>
+    <button id="next" class="btn" disabled>السؤال التالي</button>
+  </div>
+
+  <div id="result" class="card hidden">
+    <div class="score" id="finalScore"></div>
+    <p id="msg" style="text-align:center; font-size:16px; line-height:1.7;"></p>
+    <div id="review"></div>
+    <button id="restart" class="btn btn2">إعادة الاختبار</button>
+  </div>
+</div>
+
+<script>
+const L = ['أ','ب','ج','د'];
+const QS = [
+// ---- التمرير بالقيمة ----
+{q:'ما خرج البرنامج؟',c:'void change(int x) { x = 100; }\nint main() {\n  int a = 5;\n  change(a);\n  cout << a;\n}',o:['5','100','105','خطأ في الترجمة'],a:0,e:'بالقيمة تُنسخ قيمة a إلى x، فتعديل x داخل الدالة لا يمسّ a الأصلي.'},
+{q:'ما خرج البرنامج؟',c:'void swap(int a, int b) {\n  int t = a; a = b; b = t;\n}\nint main() {\n  int x = 3, y = 7;\n  swap(x, y);\n  cout << x << " " << y;\n}',o:['3 7','7 3','3 3','7 7'],a:0,e:'بالقيمة تُبدَّل النسخ داخل الدالة فقط، فيبقى x = 3 و y = 7.'},
+{q:'ما خرج البرنامج؟',c:'int twice(int n) { return n * 2; }\nint main() {\n  int v = 4;\n  cout << twice(v) << " " << v;\n}',o:['8 4','8 8','4 4','4 8'],a:0,e:'الدالة تعيد 8 دون أن تغيّر v، لأن n نسخة من v.'},
+{q:'ما خرج البرنامج؟',c:'void add(int n) {\n  n += 10;\n  cout << n << " ";\n}\nint main() {\n  int m = 5;\n  add(m); add(m);\n  cout << m;\n}',o:['15 15 5','15 25 25','25 25 5','15 15 15'],a:0,e:'كل استدعاء ينسخ m = 5 من جديد، فيطبع 15 مرتين، ثم يبقى m = 5.'},
+{q:'ما خرج البرنامج؟',c:'void f(int x) {\n  x++;\n  cout << x << " ";\n}\nint main() {\n  int a = 1;\n  f(a); f(a);\n  cout << a;\n}',o:['2 2 1','2 3 3','3 3 1','2 2 3'],a:0,e:'الزيادة تطال النسخة فقط، فيطبع 2 مرتين ويبقى a = 1.'},
+{q:'ما خرج البرنامج؟',c:'int sum(int a, int b) {\n  a = 0;\n  return a + b;\n}\nint main() {\n  int x = 5, y = 7;\n  cout << sum(x, y) << " " << x;\n}',o:['7 5','12 5','7 0','12 0'],a:0,e:'داخل الدالة صارت النسخة a = 0 فعاد 0 + 7 = 7، وبقي x الأصلي 5.'},
+// ---- التمرير بالمرجع ----
+{q:'ما خرج البرنامج؟',c:'void change(int &x) { x = 100; }\nint main() {\n  int a = 5;\n  change(a);\n  cout << a;\n}',o:['100','5','105','خطأ في الترجمة'],a:0,e:'بالمرجع x اسم آخر لـ a نفسه، فالتعديل يصيب الأصل مباشرة.'},
+{q:'ما خرج البرنامج؟',c:'void swap(int &a, int &b) {\n  int t = a; a = b; b = t;\n}\nint main() {\n  int x = 3, y = 7;\n  swap(x, y);\n  cout << x << " " << y;\n}',o:['3 7','7 3','3 3','7 7'],a:1,e:'بالمرجع يتبادل المتغيران الأصليان فعلاً، فيصير x = 7 و y = 3.'},
+{q:'ما خرج البرنامج؟',c:'void inc(int &n) { n++; }\nint main() {\n  int x = 1;\n  inc(x); inc(x);\n  cout << x;\n}',o:['1','2','3','4'],a:2,e:'كل استدعاء يزيد x الأصلي، فبعد مرتين يصير 3.'},
+{q:'ما خرج البرنامج؟',c:'void f(int &x) { x *= 2; }\nint main() {\n  int a = 3;\n  f(a); f(a);\n  cout << a;\n}',o:['6','12','3','9'],a:1,e:'المرة الأولى: 3 × 2 = 6، والثانية: 6 × 2 = 12.'},
+{q:'ما خرج البرنامج؟',c:'void f(int a, int &b) {\n  a = 1; b = 2;\n}\nint main() {\n  int x = 5, y = 6;\n  f(x, y);\n  cout << x << " " << y;\n}',o:['1 2','5 2','5 6','1 6'],a:1,e:'a بالقيمة فلا يتغير x، و b بالمرجع فيصير y = 2.'},
+{q:'ما خرج البرنامج؟',c:'int main() {\n  int x = 5;\n  int &r = x;\n  r = 9;\n  cout << x;\n}',o:['5','9','14','0'],a:1,e:'المرجع r ليس نسخة بل اسم آخر لنفس المتغير x، فتغييره يغيّر x.'},
+// ---- النطاق العام والمحلي ----
+{q:'ما خرج البرنامج؟',c:'int x = 10;\nint main() {\n  cout << x << " ";\n  { int x = 20; cout << x << " "; }\n  cout << x;\n}',o:['10 20 10','20 20 20','10 10 10','20 10 20'],a:0,e:'داخل الكتلة يخفي المحلي x = 20 العام، وبعد انتهائها يعود الظهور للعام 10.'},
+{q:'ما خرج البرنامج؟',c:'int g = 1;\nvoid show() { cout << g << " "; }\nint main() {\n  int g = 2;\n  show();\n  cout << g;\n}',o:['2 2','1 2','2 1','1 1'],a:1,e:'الدالة show لا ترى المحلي في main، فتطبع العام 1، ثم main تطبع محليها 2.'},
+{q:'ما خرج البرنامج؟',c:'int x = 5;\nint main() {\n  { int x = 9; cout << x << " "; }\n  cout << x;\n}',o:['9 5','5 5','9 9','5 9'],a:0,e:'المحلي 9 يعيش داخل الكتلة فقط، وبعدها يظهر العام 5.'},
+{q:'ما خرج البرنامج؟',c:'int x = 100;\nint main() {\n  int x = 5;\n  cout << ::x << " " << x;\n}',o:['5 100','100 5','5 5','100 100'],a:1,e:'المؤهل ::x يصل إلى العام رغم وجود محلي يحمل الاسم نفسه.'},
+{q:'ما خرج البرنامج؟',c:'void f() {\n  static int c = 0;\n  c++;\n  cout << c << " ";\n}\nint main() { f(); f(); f(); }',o:['1 1 1','1 2 3','0 1 2','3 3 3'],a:1,e:'المتغير المحلي الساكن static يُبنى مرة واحدة ويحتفظ بقيمته بين الاستدعاءات.'},
+{q:'ما خرج البرنامج؟',c:'int a = 1;\nint main() {\n  int a = 2;\n  { int a = 3; cout << a << " "; }\n  cout << a << " " << ::a;\n}',o:['3 2 1','1 2 3','3 3 3','2 3 1'],a:0,e:'الأقرب يحجب الأبعد: 3 في الكتلة، ثم 2 في main، ثم العام 1 عبر ::.'},
+{q:'ما خرج البرنامج؟',c:'int x = 10;\nvoid f() {\n  int x = 20;\n  cout << x << " ";\n}\nint main() { f(); cout << x; }',o:['20 10','10 10','20 20','10 20'],a:0,e:'محلي الدالة 20 يحجب العام داخلها فقط، و main تطبع العام 10.'},
+{q:'ما خرج البرنامج؟',c:'int main() {\n  for (int i = 0; i < 3; i++)\n    cout << i;\n  cout << " ";\n  int i = 9;\n  cout << i;\n}',o:['012 9','012 3','012 2','123 9'],a:0,e:'i الحلقة تموت بانتهائها، و i = 9 متغير محلي جديد مستقل عنها.'}
+];
+let idx = 0, score = 0, userAns = [];
+const $ = id => document.getElementById(id);
+function render() {
+  const q = QS[idx];
+  $('bar').style.width = (idx / QS.length * 100) + '%';
+  $('count').textContent = 'السؤال ' + (idx + 1) + ' من ' + QS.length;
+  $('scoreLive').textContent = 'النقاط: ' + score;
+  $('qtext').textContent = (idx + 1) + '. ' + q.q;
+  $('code').innerHTML = '';
+  if (q.c) {
+    const pre = document.createElement('pre');
+    pre.textContent = q.c;
+    $('code').appendChild(pre);
+  }
+  $('opts').innerHTML = '';
+  $('explain').style.display = 'none';
+  $('next').disabled = true;
+  $('next').textContent = idx === QS.length - 1 ? 'عرض النتيجة' : 'السؤال التالي';
+  q.o.forEach((t, i) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.textContent = L[i] + '. ' + t;
+    b.onclick = () => answer(i, b);
+    $('opts').appendChild(b);
+  });
+}
+function answer(i, btn) {
+  const q = QS[idx];
+  userAns[idx] = i;
+  document.querySelectorAll('.opt').forEach((b, j) => {
+    b.disabled = true;
+    if (j === q.a) b.classList.add('correct');
+    if (j === i && i !== q.a) b.classList.add('wrong');
+  });
+  if (i === q.a) score++;
+  $('scoreLive').textContent = 'النقاط: ' + score;
+  $('explain').textContent = (i === q.a ? '✔ إجابة صحيحة. ' : '✘ الإجابة الصحيحة: ' + L[q.a] + '. ') + q.e;
+  $('explain').style.display = 'block';
+  $('next').disabled = false;
+}
+$('next').onclick = () => {
+  idx++;
+  if (idx >= QS.length) showResult(); else render();
+};
+function showResult() {
+  $('quiz').classList.add('hidden');
+  $('result').classList.remove('hidden');
+  const pct = Math.round(score / QS.length * 100);
+  $('finalScore').textContent = score + ' / ' + QS.length + ' (' + pct + '%)';
+  $('msg').textContent = pct >= 90 ? 'ممتاز! إتقان كامل للموضوع.' : pct >= 70 ? 'جيد جداً، راجع الأسئلة الخاطئة بالأسفل.' : pct >= 50 ? 'مقبول، يحتاج مراجعة إضافية.' : 'يحتاج مراجعة شاملة للموضوع قبل الامتحان.';
+  $('review').innerHTML = QS.map((q, i) => {
+    const u = userAns[i];
+    return '<div class="rev"><div class="qt">' + (i + 1) + '. ' + q.q + '</div>' +
+      (u === q.a ? '<div class="ca">✔ إجابتك صحيحة: ' + L[u] + '</div>'
+                  : '<div class="ua">✘ إجابتك: ' + L[u] + ' — الصحيحة: ' + L[q.a] + '</div>') +
+      '<div class="ex">' + q.e + '</div></div>';
+  }).join('');
+  window.scrollTo(0, 0);
+}
+$('restart').onclick = () => {
+  idx = 0; score = 0; userAns = [];
+  $('result').classList.add('hidden');
+  $('quiz').classList.remove('hidden');
+  render();
+  window.scrollTo(0, 0);
+};
+render();
+</script>
+</body>
+</html>
